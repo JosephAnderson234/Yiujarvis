@@ -6,7 +6,8 @@ import shutil
 import subprocess
 
 from src.app_index import find_best_match, load_apps
-from src.memory_store import load_memory, save_memory
+from src.error_logger import ensure_error_logging, log_exception
+from src.memory_store import load_memory, save_memory, set_preference
 
 
 SYSTEM_ALIASES = {
@@ -46,6 +47,9 @@ if hasattr(subprocess, "CREATE_NEW_PROCESS_GROUP"):
     WINDOWS_SILENT_FLAGS |= subprocess.CREATE_NEW_PROCESS_GROUP
 
 
+ensure_error_logging()
+
+
 def launch_silently(command):
     return subprocess.Popen(
         command,
@@ -55,6 +59,18 @@ def launch_silently(command):
         creationflags=WINDOWS_SILENT_FLAGS,
         shell=False,
     )
+
+
+def _open_windows_target(target):
+    if target.startswith("http") or target.startswith("ms-settings:"):
+        os.startfile(target)
+        return
+
+    if os.path.exists(target):
+        os.startfile(target)
+        return
+
+    launch_silently(["cmd", "/c", "start", "", target])
 
 
 def get_weather():
@@ -177,7 +193,7 @@ def open_app(app):
 
     try:
         if match:
-            launch_silently([apps[match]])
+            _open_windows_target(apps[match])
             return f"Abriendo {match}..."
 
         if target.startswith("http"):
@@ -189,22 +205,23 @@ def open_app(app):
             return f"Abriendo {app}..."
 
         if target in SYSTEM_ALIASES.values():
-            launch_silently(["cmd", "/c", "start", "", target])
+            _open_windows_target(target)
             return f"Abriendo {app}..."
 
         executable = shutil.which(target)
         if executable:
-            launch_silently([executable])
+            _open_windows_target(executable)
             return f"Abriendo {app}..."
 
-        launch_silently(["cmd", "/c", "start", "", target])
+        _open_windows_target(target)
         return f"Intentando abrir {app}..."
     except Exception as exc:
+        log_exception(f"Error abriendo app {app}")
         return f"No se pudo abrir {app}: {exc}"
 
 
 def save_user_preference(key, value):
     memory = load_memory()
-    memory[key] = value
+    memory = set_preference(memory, key, value)
     save_memory(memory)
     return f"Guardado: {key} = {value}"

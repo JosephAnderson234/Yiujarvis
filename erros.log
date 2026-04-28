@@ -1,0 +1,8 @@
+2026-04-27 20:50:19,784 ERROR yiujarvis: Error ejecutando tool boom
+Traceback (most recent call last):
+  File "C:\Users\cosea\Documents\Github\portafolio\Yiujarvis\src\core\tool_registry.py", line 56, in execute
+    return tool.func(**kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+  File "<string>", line 1, in <lambda>
+  File "<string>", line 1, in <genexpr>
+RuntimeError: fallo de prueba
