@@ -4,6 +4,8 @@ import json
 
 from src.app_index import find_best_match, load_apps
 from src.intent import classify_intent, extract_targets
+from src.memory.retrieval import get_relevant_memory
+from src.tool_ranking import rank_tools, select_best_tool
 from src.tools import SYSTEM_ALIASES, list_running_processes
 
 
@@ -124,19 +126,64 @@ class Plan:
 
 
 class Planner:
+    def __init__(self, registry=None, memory_store=None):
+        self.registry = registry
+        self.memory_store = memory_store or {}
+
     def build_plan(self, user_input):
         apps_available = load_apps()
         running_processes = _load_running_processes()
+        relevant_memory = get_relevant_memory(user_input, self.memory_store)
+        ranked_tools = rank_tools(user_input, self.registry.list_tools() if self.registry else [], history=self.memory_store.get("history", []))
 
         context = {
             "user_input": user_input,
             "apps_available": sorted(apps_available.keys()),
             "running_processes": running_processes,
             "last_result": None,
+            "relevant_memory": relevant_memory,
+            "ranked_tools": [
+                {
+                    "tool": item["tool"].name,
+                    "score": item["score"],
+                    "reasons": item["reasons"],
+                }
+                for item in ranked_tools[:5]
+            ],
         }
 
         intent = classify_intent(user_input)
         plan = Plan(context=context, intent=intent)
+
+        if relevant_memory:
+            top_memory = relevant_memory[0]
+            if top_memory.get("source") == "preferences":
+                plan.notes.append(
+                    f"Memoria relevante: {top_memory.get('key')}={top_memory.get('value')}"
+                )
+            else:
+                plan.notes.append(f"Memoria relevante encontrada en {top_memory.get('source')}")
+
+        if intent == "chat" and self.registry:
+            best_tool, _ = select_best_tool(user_input, self.registry.list_tools(), history=self.memory_store.get("history", []))
+            if best_tool and best_tool["tool"].name in {"get_weather", "list_running_processes"}:
+                tool = best_tool["tool"]
+                params = {}
+
+                if tool.name == "list_running_processes":
+                    params = {"limit": 10}
+
+                plan.steps.append(
+                    Step(
+                        action=tool.name,
+                        params=params,
+                        condition=None,
+                        condition_name="ranked_tool",
+                        description=f"Tool sugerida por ranking: {tool.name}",
+                    )
+                )
+                plan.notes.append(f"Tool sugerida automáticamente: {tool.name}")
+                return plan
 
         if intent not in {"open_app", "close_program"}:
             return plan

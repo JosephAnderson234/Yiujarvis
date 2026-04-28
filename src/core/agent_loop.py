@@ -37,6 +37,7 @@ def build_tool_registry():
             schema={"type": "object", "properties": {}},
             func=get_weather,
             risk="safe",
+            keywords=["clima", "tiempo", "weather", "temperatura"],
         )
     )
     registry.register(
@@ -50,6 +51,7 @@ def build_tool_registry():
             },
             func=open_app,
             risk="dangerous",
+            keywords=["abrir", "abre", "open", "launch", "iniciar", "app", "programa"],
         )
     )
     registry.register(
@@ -64,6 +66,7 @@ def build_tool_registry():
             },
             func=list_running_processes,
             risk="safe",
+            keywords=["procesos", "ventanas", "apps", "abiertas", "running", "lista"],
         )
     )
     registry.register(
@@ -80,6 +83,7 @@ def build_tool_registry():
             },
             func=close_program,
             risk="dangerous",
+            keywords=["cerrar", "cierra", "close", "terminar", "mata", "kill"],
         )
     )
     registry.register(
@@ -96,6 +100,7 @@ def build_tool_registry():
             },
             func=save_user_preference,
             risk="safe",
+            keywords=["guarda", "guardar", "recuerda", "preferencia", "memo", "anota"],
         )
     )
 
@@ -104,9 +109,21 @@ def build_tool_registry():
     return registry
 
 
-def build_system_prompt(initial_memory, recent_messages, registry):
+def build_system_prompt(initial_memory, recent_messages, registry, relevant_memory=None, ranked_tools=None):
     tool_names = registry.list_tool_names()
     memory_context = build_memory_context(initial_memory, recent_messages)
+    relevant_memory = relevant_memory or []
+    ranked_tools = ranked_tools or []
+
+    relevant_memory_block = "\n".join(
+        f"- {item.get('source')}: {item.get('key', item.get('value', ''))} ({item.get('score', 0)})"
+        for item in relevant_memory[:5]
+    ) or "- ninguna"
+
+    ranked_tools_block = "\n".join(
+        f"- {item.get('tool')}: {item.get('score')}"
+        for item in ranked_tools[:5]
+    ) or "- ninguna"
 
     return f"""
 Eres Yiujarvis, un asistente personal inteligente.
@@ -120,6 +137,12 @@ Objetivos:
 
 Memoria actual del usuario:
 {memory_context}
+
+Memoria relevante recuperada:
+{relevant_memory_block}
+
+Tools mejor rankeadas:
+{ranked_tools_block}
 
 Herramientas disponibles:
 {", ".join(tool_names)}
@@ -191,7 +214,7 @@ def Yiujarvis(initial_memory, provider="githubmodel"):
     client = model_config["client"]
     model_name = model_config["model_name"]
     registry = build_tool_registry()
-    planner = Planner()
+    planner = Planner(registry=registry, memory_store=initial_memory)
     executor = PlanExecutor(registry)
     recent_messages = deque(maxlen=10)
 
@@ -216,7 +239,13 @@ def Yiujarvis(initial_memory, provider="githubmodel"):
             recent_messages.append({"role": "user", "content": user_input})
             append_history(initial_memory, "user", user_input)
 
-            messages[0]["content"] = build_system_prompt(initial_memory, recent_messages, registry)
+            messages[0]["content"] = build_system_prompt(
+                initial_memory,
+                recent_messages,
+                registry,
+                plan.context.get("relevant_memory", []),
+                plan.context.get("ranked_tools", []),
+            )
 
             plan = planner.build_plan(user_input)
 

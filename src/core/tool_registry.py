@@ -1,5 +1,6 @@
 import logging
 from dataclasses import dataclass
+from dataclasses import field
 from typing import Any, Callable
 
 from src.error_logger import ensure_error_logging, log_error, log_exception
@@ -17,6 +18,7 @@ class Tool:
     func: Callable[..., Any]
     risk: str = "safe"
     source: str = "local"
+    keywords: list[str] = field(default_factory=list)
 
 
 class ToolRegistry:
@@ -28,7 +30,16 @@ class ToolRegistry:
         self._tools[tool.name] = tool
         return tool
 
-    def register_external_tool(self, name, description, schema, func, risk="safe", source="external"):
+    def register_external_tool(
+        self,
+        name,
+        description,
+        schema,
+        func,
+        risk="safe",
+        source="external",
+        keywords=None,
+    ):
         return self.register(
             Tool(
                 name=name,
@@ -37,6 +48,7 @@ class ToolRegistry:
                 func=func,
                 risk=risk,
                 source=source,
+                keywords=list(keywords or []),
             )
         )
 
@@ -62,6 +74,9 @@ class ToolRegistry:
 
     def list_tool_names(self):
         return [tool.name for tool in self._tools.values()]
+
+    def list_tools(self):
+        return list(self._tools.values())
 
     def set_confirmation_callback(self, callback):
         self._confirm_callback = callback
