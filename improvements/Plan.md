@@ -1,359 +1,457 @@
-# 🧭 FASE 1 — Estabilizar el core (base sólida)
+# 🧭 VISIÓN DE ESTE PLAN
 
-**Duración:** 2–4 días
-**Objetivo:** que tu agente deje de ser frágil
+Al terminar tendrás:
 
-### 🔧 Qué hacer
+* Un agente que **piensa en pasos (no reacciona)**
+* Usa memoria **para decidir, no solo guardar**
+* Elige tools **sin depender ciegamente del LLM**
+* Puede usar **tools locales y externas indistintamente**
 
-### 1.1 Separar responsabilidades
+---
 
-Refactor mínimo:
+# ⚙️ FASE 1 — Planner real (el cambio más importante)
 
-* `agent.py` → solo lógica del loop
-* `tools.py` → ejecución pura
-* crear:
+**Duración:** 4–6 días
+**Impacto:** 🔥🔥🔥🔥🔥
+
+---
+
+## 🎯 Objetivo
+
+Pasar de:
+
+> “intención → acción directa”
+
+A:
+
+> **“intención → plan estructurado → ejecución”**
+
+---
+
+## 🧩 Qué construir
+
+### 1.1 Estructura de plan
+
+```python
+class Plan:
+    def __init__(self, steps, context=None):
+        self.steps = steps
+        self.context = context or {}
+```
+
+```python
+class Step:
+    def __init__(self, action, params, condition=None):
+        self.action = action
+        self.params = params
+        self.condition = condition  # opcional
+```
+
+---
+
+### 1.2 Separar responsabilidades
+
+Crea:
 
 ```bash
-src/
-  core/
-    agent_loop.py
-    tool_registry.py
+src/planner/
+  planner.py
+  executor.py
 ```
 
 ---
 
-### 1.2 Crear un Tool Registry (clave)
-
-Deja de usar lista hardcodeada.
-
-```python
-class Tool:
-    def __init__(self, name, description, schema, func):
-        self.name = name
-        self.description = description
-        self.schema = schema
-        self.func = func
-```
-
-```python
-registry = ToolRegistry()
-registry.register(open_app_tool)
-```
-
----
-
-### 1.3 Manejo de errores serio
-
-Ahora mismo si algo falla, todo muere.
-
-Añade:
-
-* try/catch en cada tool
-* logging básico
-
----
-
-### ✅ Checklist Fase 1
-
-* Puedes añadir una tool sin tocar el agent
-* El sistema no crashea si una tool falla
-* Código más modular
-
----
-
-# 🧠 FASE 2 — Memoria útil (de verdad)
-
-**Duración:** 3–5 días
-**Objetivo:** que el agente “recuerde” de forma inteligente
-
----
-
-### 2.1 Rediseñar `memory.json`
-
-Pasa de esto:
-
-```json
-{ "name": "Juan" }
-```
-
-A esto:
-
-```json
-{
-  "preferences": {},
-  "facts": [],
-  "history": []
-}
-```
-
----
-
-### 2.2 Añadir memoria de conversación corta
-
-Guarda últimos mensajes:
-
-```python
-recent_messages = deque(maxlen=10)
-```
-
----
-
-### 2.3 Guardado inteligente (no todo)
-
-Solo guarda:
-
-* preferencias
-* datos explícitos
-* cosas útiles
-
----
-
-### 2.4 (Opcional pero potente)
-
-Embeddings simples para búsqueda:
-
-* “qué dijo el usuario sobre X”
-
----
-
-### ✅ Checklist Fase 2
-
-* El agente recuerda contexto reciente
-* No guarda basura innecesaria
-* Puede recuperar info útil
-
----
-
-# 🔐 FASE 3 — Seguridad (obligatoria)
-
-**Duración:** 2–3 días
-**Objetivo:** evitar que tu agente haga cosas peligrosas
-
----
-
-### 3.1 Sistema de confirmación
-
-Antes de ejecutar tools sensibles:
-
-```text
-Quieres cerrar: chrome.exe
-Confirmar? (y/n)
-```
-
----
-
-### 3.2 Clasificar tools por riesgo
-
-```python
-SAFE = ["get_weather"]
-DANGEROUS = ["close_program", "open_app"]
-```
-
----
-
-### 3.3 Lista negra de procesos
-
-Nunca permitir cerrar:
-
-* explorer.exe
-* system
-* etc.
-
----
-
-### 3.4 Modo “dry-run”
-
-```bash
-> close chrome --dry-run
-```
-
----
-
-### ✅ Checklist Fase 3
-
-* Nada crítico se ejecuta sin confirmación
-* No puedes romper el sistema fácilmente
-
----
-
-# 🔌 FASE 4 — Extensibilidad (el salto grande)
-
-**Duración:** 5–10 días
-**Objetivo:** convertirlo en plataforma
-
----
-
-### 4.1 Plugins locales
-
-Estructura:
-
-```bash
-plugins/
-  spotify/
-    plugin.py
-  vscode/
-    plugin.py
-```
-
-Cada plugin registra tools.
-
----
-
-### 4.2 Carga automática
-
-```python
-load_plugins("plugins/")
-```
-
----
-
-### 4.3 Preparar MCP (muy importante)
-
-Crea módulo:
-
-```bash
-src/mcp/
-  client.py
-  registry.py
-```
-
-Funciones:
-
-* descubrir servidores
-* registrar tools externas
-
----
-
-### 4.4 Tool discovery dinámico
-
-El agente ya no “conoce” tools, solo pregunta:
-
-```python
-registry.get_available_tools()
-```
-
----
-
-### ✅ Checklist Fase 4
-
-* Puedes añadir funcionalidades sin tocar el core
-* Soporte inicial para MCP listo
-
----
-
-# 🧠 FASE 5 — Inteligencia del agente (lo que lo hace destacar)
-
-**Duración:** 5–8 días
-**Objetivo:** que deje de ser “ejecutor de comandos”
-
----
-
-### 5.1 Sistema de intenciones
-
-En vez de:
-
-> el modelo llama tools directamente
-
-Haz:
-
-```python
-intent = classify(user_input)
-```
+### 1.3 Planner básico (sin LLM aún)
 
 Ejemplo:
 
-* abrir app
-* automatizar
-* preguntar info
+Input:
 
----
+> "abre vscode y spotify"
 
-### 5.2 Planificación simple
-
-Para comandos complejos:
-
-> “abre vscode y luego spotify”
-
-El agente genera:
+Output:
 
 ```python
-steps = [
-  open_vscode,
-  open_spotify
+[
+  Step("open_app", {"name": "vscode"}),
+  Step("open_app", {"name": "spotify"})
 ]
 ```
 
 ---
 
-### 5.3 Contexto enriquecido al modelo
+### 1.4 Executor
 
-En cada prompt incluye:
-
-* tools disponibles
-* memoria relevante
-* contexto reciente
+```python
+for step in plan.steps:
+    if step.condition is None or step.condition():
+        tool_registry.execute(step.action, step.params)
+```
 
 ---
 
-### 5.4 Mejor matching de apps
+## ✅ Checklist Fase 1
 
-Usa:
+* El agente SIEMPRE genera un plan antes de ejecutar
+* Puedes imprimir/debuggear el plan
+* El executor está desacoplado
+
+---
+
+# 🧠 FASE 2 — Planner inteligente (condiciones + validación)
+
+**Duración:** 4–5 días
+**Impacto:** 🔥🔥🔥🔥
+
+---
+
+## 🎯 Objetivo
+
+Que el agente no solo ejecute, sino que **razone antes de actuar**
+
+---
+
+## 🧩 Qué añadir
+
+### 2.1 Condiciones en pasos
+
+```python
+Step(
+  action="open_app",
+  params={"name": "vscode"},
+  condition=lambda ctx: not ctx["is_open"]
+)
+```
+
+---
+
+### 2.2 Pre-checks
+
+Antes de ejecutar:
+
+* ¿la app existe?
+* ¿ya está abierta?
+
+---
+
+### 2.3 Contexto compartido
+
+```python
+plan.context = {
+  "apps_available": [...],
+  "running_processes": [...]
+}
+```
+
+---
+
+### 2.4 Resultado por step
+
+```python
+result = executor.run(step)
+plan.context["last_result"] = result
+```
+
+---
+
+## ✅ Checklist Fase 2
+
+* El agente evita acciones redundantes
+* Puede tomar decisiones durante ejecución
+* Usa contexto real del sistema
+
+---
+
+# 🧠 FASE 3 — Memory Retrieval Layer
+
+**Duración:** 3–4 días
+**Impacto:** 🔥🔥🔥🔥
+
+---
+
+## 🎯 Objetivo
+
+Que la memoria influya decisiones
+
+---
+
+## 🧩 Qué construir
+
+### 3.1 Módulo nuevo
+
+```bash
+src/memory/
+  retrieval.py
+```
+
+---
+
+### 3.2 Función central
+
+```python
+def get_relevant_memory(query: str, memory_store) -> list:
+    ...
+```
+
+---
+
+### 3.3 Integración
+
+Antes de planear:
+
+```python
+memory_context = get_relevant_memory(user_input)
+```
+
+Y lo pasas a:
+
+* planner
+* LLM (si aplica)
+
+---
+
+### 3.4 Scoring simple
 
 * keywords
-* fuzzy matching mejorado
+* coincidencias parciales
+* prioridad a “preferences”
 
 ---
 
-### ✅ Checklist Fase 5
+## 🔥 Opcional (pero top)
 
-* Puede ejecutar múltiples acciones
-* Entiende mejor lo que el usuario quiere
-* No depende solo del LLM “a ciegas”
+* embeddings locales
 
 ---
 
-# 🚀 FASE 6 (OPCIONAL PERO MUY POTENTE)
+## ✅ Checklist Fase 3
 
-**Objetivo:** diferenciarte
-
-* UI (terminal mejorada o web)
-* automatizaciones tipo:
-
-  * “modo trabajo”
-* scripting natural:
-
-  * “cada día abre X”
+* El agente recuerda cosas útiles automáticamente
+* La memoria afecta el plan generado
 
 ---
 
-# 🧭 Orden recomendado real
+# 🔌 FASE 4 — Tool Intelligence (ranking + selección)
 
-No hagas todo a la vez:
-
-1. Fase 1 (core)
-2. Fase 3 (seguridad) ⚠️
-3. Fase 2 (memoria)
-4. Fase 4 (plugins/MCP)
-5. Fase 5 (inteligencia)
+**Duración:** 3–5 días
+**Impacto:** 🔥🔥🔥
 
 ---
 
-# 💬 Conclusión directa
+## 🎯 Objetivo
 
-Ahora mismo tienes:
-👉 un **asistente funcional**
-
-Con este plan puedes llevarlo a:
-👉 un **framework extensible de agentes locales**
-
-La diferencia está en:
-
-* desacoplar
-* controlar
-* extender
+Reducir dependencia del LLM para elegir tools
 
 ---
 
-Si quieres, en el siguiente paso puedo:
-👉 diseñarte la **estructura exacta de carpetas + código base listo para copiar**
-para que implementes Fase 1 y 4 sin perder tiempo pensando arquitectura.
+## 🧩 Qué hacer
+
+### 4.1 Enriquecer tools
+
+```python
+Tool(
+  name="open_app",
+  description="abre aplicaciones",
+  keywords=["abrir", "programa", "app"]
+)
+```
+
+---
+
+### 4.2 Ranking
+
+```python
+def rank_tools(query, tools):
+    ...
+```
+
+Criterios:
+
+* keywords
+* similitud texto
+* uso histórico
+
+---
+
+### 4.3 Integración en planner
+
+Antes de decidir:
+
+```python
+best_tools = rank_tools(user_input)
+```
+
+---
+
+## ✅ Checklist Fase 4
+
+* El sistema sugiere tools sin LLM
+* Mejora precisión en acciones
+
+---
+
+# 🔌 FASE 5 — Plugins con capacidades
+
+**Duración:** 3–4 días
+**Impacto:** 🔥🔥🔥
+
+---
+
+## 🎯 Objetivo
+
+Que el agente entienda “qué sabe hacer cada plugin”
+
+---
+
+## 🧩 Qué hacer
+
+### 5.1 Definir capacidades
+
+```python
+{
+  "plugin": "spotify",
+  "capabilities": ["music", "audio"]
+}
+```
+
+---
+
+### 5.2 Asociar tools a capacidades
+
+---
+
+### 5.3 Matching por intención
+
+```python
+if intent == "music":
+    usar plugin spotify
+```
+
+---
+
+## ✅ Checklist Fase 5
+
+* El agente elige plugins inteligentemente
+* No depende solo del nombre de la tool
+
+---
+
+# 🌐 FASE 6 — MCP real (primer integración)
+
+**Duración:** 5–7 días
+**Impacto:** 🔥🔥🔥🔥🔥
+
+---
+
+## 🎯 Objetivo
+
+Convertir tu sistema en extensible de verdad
+
+---
+
+## 🧩 Qué hacer
+
+### 6.1 Levantar servidor MCP simple
+
+Aunque sea local con 2 tools.
+
+---
+
+### 6.2 Cliente MCP funcional
+
+En `src/mcp/client.py`:
+
+* conectar
+* listar tools
+* ejecutar tool
+
+---
+
+### 6.3 Registrar tools MCP en tu registry
+
+👉 Igual que las locales
+
+---
+
+### 6.4 Transparencia total
+
+El planner NO debe saber si:
+
+* tool es local
+* tool es remota
+
+---
+
+## ✅ Checklist Fase 6
+
+* Puedes ejecutar una tool externa real
+* No hay diferencia en ejecución
+
+---
+
+# 🧪 FASE 7 — Testing del sistema inteligente
+
+**Duración:** 3–4 días
+**Impacto:** 🔥🔥🔥
+
+---
+
+## 🎯 Objetivo
+
+Evitar que todo se rompa
+
+---
+
+## 🧩 Qué testear
+
+### 7.1 Planner
+
+```python
+input → expected plan
+```
+
+---
+
+### 7.2 Executor
+
+* steps correctos
+* manejo de errores
+
+---
+
+### 7.3 Tools
+
+* mocks de sistema
+
+---
+
+## ✅ Checklist Fase 7
+
+* Puedes refactorizar sin miedo
+* Detectas errores rápido
+
+---
+
+# 🚀 ORDEN RECOMENDADO (CRÍTICO)
+
+No lo hagas en paralelo:
+
+1. Fase 1 → Planner base
+2. Fase 2 → Planner inteligente
+3. Fase 3 → Memory retrieval
+4. Fase 4 → Tool ranking
+5. Fase 6 → MCP real 🔥
+6. Fase 5 → Plugins con capacidades
+7. Fase 7 → Testing
+
+---
+
+# 💬 CONCLUSIÓN DIRECTA
+
+Ahora mismo tu sistema es:
+
+👉 **reactivo e inteligente a medias**
+
+Con este plan pasa a:
+
+👉 **agente deliberativo (piensa antes de actuar)**
