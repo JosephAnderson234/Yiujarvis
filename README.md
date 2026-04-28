@@ -63,6 +63,7 @@ python .\main.py --model groq
 ## Qué puede hacer
 
 - Abrir apps como navegador, terminal, editor, mensajería y utilidades del sistema.
+- Revisar procesos activos de Windows y cerrar programas cuando se le solicite.
 - Responder preguntas y generar texto usando el modelo elegido.
 - Guardar preferencias del usuario en `memory.json`.
 
@@ -91,5 +92,6 @@ src/
 ## Notas
 
 - La apertura de apps está pensada para Windows.
+- Para cerrar procesos de Windows, ejecuta Yiujarvis como administrador.
 - El índice de apps se reconstruye automáticamente si no existe.
 - Si usas `groq`, la salida de texto se muestra en streaming.

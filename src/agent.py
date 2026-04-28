@@ -1,7 +1,7 @@
 import json
 
 from src.config import get_model_config
-from src.tools import get_weather, open_app, save_user_preference
+from src.tools import close_program, get_weather, list_running_processes, open_app, save_user_preference
 
 
 TOOLS = [
@@ -28,6 +28,33 @@ TOOLS = [
     {
         "type": "function",
         "function": {
+            "name": "list_running_processes",
+            "description": "Lista las apps y ventanas abiertas de Windows",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "limit": {"type": "integer", "default": 30},
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "close_program",
+            "description": "Cierra una app abierta de Windows por nombre o ventana",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "process_name": {"type": "string"},
+                },
+                "required": ["process_name"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "save_user_preference",
             "description": "Guarda información importante del usuario",
             "parameters": {
@@ -43,7 +70,9 @@ TOOLS = [
 ]
 
 AVAILABLE_FUNCTIONS = {
+    "close_program": close_program,
     "get_weather": get_weather,
+    "list_running_processes": list_running_processes,
     "open_app": open_app,
     "save_user_preference": save_user_preference,
 }
@@ -85,6 +114,7 @@ Eres Yiujarvis, un asistente personal inteligente.
 Objetivos:
 - Ayudar con productividad, información y automatización
 - Usar herramientas cuando sea necesario
+- Poder revisar apps abiertas de Windows y cerrar programas cuando el usuario lo pida
 - Guardar información útil del usuario usando herramientas
 
 Memoria actual del usuario:

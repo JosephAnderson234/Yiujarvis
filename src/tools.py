@@ -1,3 +1,6 @@
+import csv
+import io
+import json
 import os
 import shutil
 import subprocess
@@ -18,6 +21,21 @@ SYSTEM_ALIASES = {
     "powershell": "powershell",
     "configuracion": "ms-settings:",
     "settings": "ms-settings:",
+}
+
+IGNORED_OPEN_WINDOW_PROCESSES = {
+    "applicationframehost",
+    "lockapp",
+    "searchhost",
+    "shellhost",
+    "shellexperiencehost",
+    "startmenuexperiencehost",
+    "systemsettings",
+    "texthost",
+    "textinputhost",
+    "runtimebroker",
+    "widgets",
+    "msedgewebview2",
 }
 
 
@@ -41,6 +59,113 @@ def launch_silently(command):
 
 def get_weather():
     return "Hace 22°C y está soleado"
+
+
+def _normalize_process_name(process_name):
+    normalized = process_name.lower().strip()
+    return normalized if normalized.endswith(".exe") else f"{normalized}.exe"
+
+
+def _get_open_window_processes():
+    command = (
+        "Get-Process | "
+        "Where-Object { $_.MainWindowHandle -ne 0 -and $_.MainWindowTitle } | "
+        "Select-Object Id,ProcessName,MainWindowTitle | "
+        "ConvertTo-Json -Depth 2"
+    )
+
+    completed = subprocess.run(
+        ["powershell", "-NoProfile", "-Command", command],
+        capture_output=True,
+        text=True,
+        check=False,
+        encoding="utf-8",
+        errors="replace",
+    )
+
+    payload = completed.stdout.strip()
+    if not payload:
+        return []
+
+    try:
+        data = json.loads(payload)
+    except json.JSONDecodeError:
+        return []
+
+    if isinstance(data, dict):
+        data = [data]
+
+    processes = []
+    for item in data:
+        if not isinstance(item, dict):
+            continue
+
+        process_name = item.get("ProcessName", "")
+        window_title = item.get("MainWindowTitle", "")
+        pid = item.get("Id")
+
+        if not process_name or not window_title or pid is None:
+            continue
+
+        if process_name.lower() in IGNORED_OPEN_WINDOW_PROCESSES:
+            continue
+
+        processes.append(
+            {
+                "name": process_name,
+                "pid": str(pid),
+                "window_title": window_title,
+            }
+        )
+
+    return processes
+
+
+def list_running_processes(limit=30):
+    processes = _get_open_window_processes()[: max(1, int(limit))]
+    return json.dumps(processes, ensure_ascii=False, indent=2)
+
+
+def close_program(process_name):
+    process_name = process_name.strip()
+    normalized_target = process_name.lower().strip()
+    target_processes = _get_open_window_processes()
+
+    if not target_processes:
+        return "No hay apps abiertas para cerrar"
+
+    exact_matches = [
+        process
+        for process in target_processes
+        if normalized_target in {process["name"].lower(), process["window_title"].lower()}
+        or normalized_target in process["window_title"].lower()
+    ]
+
+    if exact_matches:
+        target_process = exact_matches[0]
+    else:
+        names = [process["name"] for process in target_processes]
+        match = find_best_match(normalized_target, {name: name for name in names})
+        target_process = next((process for process in target_processes if process["name"] == match), None)
+
+    if not target_process:
+        available = ", ".join(process["name"] for process in target_processes[:10])
+        return f"No encontré una app abierta que coincida con {process_name}. Abiertas ahora: {available}"
+
+    completed = subprocess.run(
+        ["powershell", "-NoProfile", "-Command", f"Stop-Process -Id {target_process['pid']} -Force"],
+        capture_output=True,
+        text=True,
+        check=False,
+        encoding="utf-8",
+        errors="replace",
+    )
+
+    if completed.returncode == 0:
+        return f"Programa cerrado: {target_process['name']}"
+
+    message = completed.stderr.strip() or completed.stdout.strip() or "No se pudo cerrar el proceso"
+    return f"No se pudo cerrar {target_process['name']}: {message}"
 
 
 def open_app(app):
