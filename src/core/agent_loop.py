@@ -4,11 +4,13 @@ from collections import deque
 
 from src.config import get_model_config
 from src.error_logger import ensure_error_logging, log_exception
-from src.intent import build_action_plan, classify_intent
+from src.intent import classify_intent
 from src.memory_store import append_history, build_memory_context, load_memory, save_memory
 from src.core.tool_registry import Tool, ToolRegistry
 from src.tools import close_program, get_weather, list_running_processes, open_app, save_user_preference
 from src.plugins import load_plugins
+from src.planner.executor import PlanExecutor
+from src.planner.planner import Planner
 from src.terminal_ui import print_assistant, print_notice, print_plan, print_warning, prompt_user
 
 
@@ -189,6 +191,8 @@ def Yiujarvis(initial_memory, provider="githubmodel"):
     client = model_config["client"]
     model_name = model_config["model_name"]
     registry = build_tool_registry()
+    planner = Planner()
+    executor = PlanExecutor(registry)
     recent_messages = deque(maxlen=10)
 
     messages = [
@@ -214,15 +218,31 @@ def Yiujarvis(initial_memory, provider="githubmodel"):
 
             messages[0]["content"] = build_system_prompt(initial_memory, recent_messages, registry)
 
-            plan = build_action_plan(user_input)
-            if plan["steps"] and plan["intent"] in {"open_app", "close_program"}:
-                results = run_planned_actions(registry, plan)
+            plan = planner.build_plan(user_input)
+
+            if plan.steps or plan.notes:
+                print_plan("Plan detectado:", plan.steps)
+
+            if plan.notes:
+                for note in plan.notes:
+                    print_notice(note)
+
+            if plan.intent in {"open_app", "close_program"}:
+                results = executor.run(plan)
                 summary = " | ".join(results) if results else "No se ejecutó ninguna acción."
-                print_assistant(summary)
-                recent_messages.append({"role": "assistant", "content": summary})
-                append_history(initial_memory, "assistant", summary)
-                persist_state(initial_memory)
-                messages.append({"role": "assistant", "content": summary})
+                if results:
+                    print_assistant(summary)
+                    recent_messages.append({"role": "assistant", "content": summary})
+                    append_history(initial_memory, "assistant", summary)
+                    persist_state(initial_memory)
+                    messages.append({"role": "assistant", "content": summary})
+                else:
+                    fallback = "No había acciones que ejecutar."
+                    print_notice(fallback)
+                    recent_messages.append({"role": "assistant", "content": fallback})
+                    append_history(initial_memory, "assistant", fallback)
+                    persist_state(initial_memory)
+                    messages.append({"role": "assistant", "content": fallback})
                 continue
 
             messages.append({"role": "user", "content": user_input})

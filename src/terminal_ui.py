@@ -42,6 +42,26 @@ def print_warning(text):
 def print_plan(title, steps):
     print(Fore.CYAN + Style.BRIGHT + f"{title}")
     for index, step in enumerate(steps, start=1):
-        tool_name = step.get("tool", "unknown")
-        arguments = step.get("arguments", {})
-        print(Fore.WHITE + f"  {index}. {tool_name} -> {arguments}")
+        if hasattr(step, "to_dict"):
+            printable = step.to_dict()
+        elif isinstance(step, dict):
+            printable = step
+        else:
+            printable = {
+                "action": getattr(step, "action", "unknown"),
+                "params": getattr(step, "params", {}),
+                "condition": getattr(step, "condition_name", ""),
+                "description": getattr(step, "description", ""),
+            }
+
+        action = printable.get("action", printable.get("tool", "unknown"))
+        params = printable.get("params", printable.get("arguments", {}))
+        condition = printable.get("condition", "")
+        description = printable.get("description", "")
+        line = f"  {index}. {action} -> {params}"
+        if condition:
+            line += f" [{condition}]"
+        if description:
+            line += f" - {description}"
+
+        print(Fore.WHITE + line)
