@@ -40,6 +40,20 @@ IGNORED_OPEN_WINDOW_PROCESSES = {
 }
 
 
+BLACKLISTED_PROCESS_NAMES = {
+    "explorer",
+    "explorer.exe",
+    "system",
+    "system.exe",
+    "wininit",
+    "wininit.exe",
+    "csrss",
+    "csrss.exe",
+    "winlogon",
+    "winlogon.exe",
+}
+
+
 WINDOWS_SILENT_FLAGS = 0
 if hasattr(subprocess, "DETACHED_PROCESS"):
     WINDOWS_SILENT_FLAGS |= subprocess.DETACHED_PROCESS
@@ -145,6 +159,10 @@ def list_running_processes(limit=30):
 def close_program(process_name):
     process_name = process_name.strip()
     normalized_target = process_name.lower().strip()
+
+    if normalized_target in BLACKLISTED_PROCESS_NAMES:
+        return f"No se permite cerrar {process_name}"
+
     target_processes = _get_open_window_processes()
 
     if not target_processes:
@@ -218,6 +236,16 @@ def open_app(app):
     except Exception as exc:
         log_exception(f"Error abriendo app {app}")
         return f"No se pudo abrir {app}: {exc}"
+
+
+def preview_close_program(process_name):
+    process_name = process_name.strip()
+    normalized_target = process_name.lower().strip()
+
+    if normalized_target in BLACKLISTED_PROCESS_NAMES:
+        return f"No se permite cerrar {process_name}"
+
+    return f"Cerraría {process_name} si se confirma"
 
 
 def save_user_preference(key, value):
