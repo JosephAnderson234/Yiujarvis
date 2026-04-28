@@ -11,6 +11,9 @@ from src.tools import close_program, get_weather, list_running_processes, open_a
 from src.plugins import load_plugins
 from src.planner.executor import PlanExecutor
 from src.planner.planner import Planner
+from src.mcp.client import MCPClient
+from src.mcp.loader import load_mcp_tools
+from src.mcp.registry import MCPRegistry
 from src.terminal_ui import print_assistant, print_notice, print_plan, print_warning, prompt_user
 
 
@@ -105,6 +108,10 @@ def build_tool_registry():
     )
 
     load_plugins(registry)
+
+    mcp_client = MCPClient()
+    mcp_registry = MCPRegistry()
+    load_mcp_tools(registry, client=mcp_client, mcp_registry=mcp_registry)
 
     return registry
 
@@ -239,6 +246,8 @@ def Yiujarvis(initial_memory, provider="githubmodel"):
             recent_messages.append({"role": "user", "content": user_input})
             append_history(initial_memory, "user", user_input)
 
+            plan = planner.build_plan(user_input)
+
             messages[0]["content"] = build_system_prompt(
                 initial_memory,
                 recent_messages,
@@ -246,8 +255,6 @@ def Yiujarvis(initial_memory, provider="githubmodel"):
                 plan.context.get("relevant_memory", []),
                 plan.context.get("ranked_tools", []),
             )
-
-            plan = planner.build_plan(user_input)
 
             if plan.steps or plan.notes:
                 print_plan("Plan detectado:", plan.steps)

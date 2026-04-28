@@ -8,6 +8,7 @@ class MCPToolDefinition:
     schema: dict
     server_name: str
     risk: str = "safe"
+    capabilities: list[str] = field(default_factory=list)
     metadata: dict = field(default_factory=dict)
 
 

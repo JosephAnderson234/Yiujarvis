@@ -6,6 +6,7 @@ CLOSE_KEYWORDS = ("cierra", "cerrar", "close", "termina", "terminar", "mata")
 SAVE_KEYWORDS = ("guarda", "guardar", "recuerda", "remember", "anota")
 SHUTDOWN_KEYWORDS = ("apágate", "apagate", "apagarte", "apagar", "apagarse", "salte", "salir", "exit", "quit")
 QUESTION_KEYWORDS = ("qué", "como", "cómo", "por qué", "porque", "who", "what", "when", "where", "why", "how")
+MUSIC_KEYWORDS = ("música", "musica", "music", "spotify", "audio", "canción", "canciones", "song", "songs", "play")
 SEPARATORS = (" y luego ", " despues ", " después ", " then ", ",", " y ")
 
 
@@ -23,6 +24,12 @@ def classify_intent(text):
 
     if any(keyword in normalized for keyword in SHUTDOWN_KEYWORDS):
         return "shutdown"
+
+    if any(keyword in normalized for keyword in MUSIC_KEYWORDS):
+        return "music"
+
+    if normalized.startswith("que ") or normalized.startswith("qué "):
+        return "ask_info"
 
     if normalized.endswith("?") or any(keyword in normalized for keyword in QUESTION_KEYWORDS):
         return "ask_info"

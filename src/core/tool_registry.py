@@ -19,6 +19,8 @@ class Tool:
     risk: str = "safe"
     source: str = "local"
     keywords: list[str] = field(default_factory=list)
+    capabilities: list[str] = field(default_factory=list)
+    plugin_name: str = ""
 
 
 class ToolRegistry:
@@ -39,6 +41,8 @@ class ToolRegistry:
         risk="safe",
         source="external",
         keywords=None,
+        capabilities=None,
+        plugin_name="",
     ):
         return self.register(
             Tool(
@@ -49,6 +53,8 @@ class ToolRegistry:
                 risk=risk,
                 source=source,
                 keywords=list(keywords or []),
+                capabilities=list(capabilities or []),
+                plugin_name=plugin_name,
             )
         )
 
@@ -90,21 +96,21 @@ class ToolRegistry:
 
         return bool(self._confirm_callback(tool, kwargs))
 
-    def execute(self, name, **kwargs):
-        tool = self.get(name)
+    def execute(self, tool_name, **kwargs):
+        tool = self.get(tool_name)
 
         if tool is None:
-            log_error(f"Intento de ejecutar una tool inexistente: {name}")
-            return f"No existe la tool {name}"
+            log_error(f"Intento de ejecutar una tool inexistente: {tool_name}")
+            return f"No existe la tool {tool_name}"
 
         if kwargs.pop("dry_run", False):
-            return f"[dry-run] {name} no se ejecutó"
+            return f"[dry-run] {tool_name} no se ejecutó"
 
         if self._requires_confirmation(tool) and not self._confirm(tool, kwargs):
-            return f"Ejecución cancelada para {name}"
+            return f"Ejecución cancelada para {tool_name}"
 
         try:
             return tool.func(**kwargs)
         except Exception as exc:
-            log_exception(f"Error ejecutando tool {name}")
-            return f"No se pudo ejecutar {name}: {exc}"
+            log_exception(f"Error ejecutando tool {tool_name}")
+            return f"No se pudo ejecutar {tool_name}: {exc}"

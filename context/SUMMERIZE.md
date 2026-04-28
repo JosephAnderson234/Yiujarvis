@@ -1,6 +1,6 @@
 # Resumen del proyecto Yiujarvis
 
-Yiujarvis es un asistente personal por consola para Windows. Hoy ya no es solo un loop de chat: incorpora herramientas locales, memoria persistente, control de errores con log, planificación simple de acciones y una base preparada para extensibilidad con plugins y MCP.
+Yiujarvis es un asistente personal por consola para Windows. Hoy ya no es solo un loop de chat: incorpora planificación por pasos, memoria útil, ranking de tools, plugins con capacidades, soporte MCP real y tests unitarios.
 
 ## Objetivo general
 
@@ -12,6 +12,10 @@ El proyecto combina:
 - Registro de errores en archivo para depuración.
 - Descubrimiento de apps instaladas.
 - Extensibilidad por plugins y base MCP.
+- Planner deliberativo con executor separado.
+- Ranking de tools por keywords, capacidades e historial.
+- UI de terminal más visual.
+- Pruebas unitarias del sistema inteligente.
 
 ## Estado actual por fases
 
@@ -23,6 +27,7 @@ La base ya está estabilizada:
 - Las tools están registradas con un `ToolRegistry` tipado en [src/core/tool_registry.py](src/core/tool_registry.py).
 - La memoria usa el esquema `preferences`, `facts` y `history` en [src/memory_store.py](src/memory_store.py).
 - Se mantiene memoria corta en runtime con `deque`.
+- El planner se separó en [src/planner/planner.py](src/planner/planner.py) y [src/planner/executor.py](src/planner/executor.py).
 
 ### Fase 3
 
@@ -32,14 +37,17 @@ Ya hay seguridad básica:
 - `close_program` bloquea procesos críticos.
 - Existe soporte para `dry_run`.
 - Los errores se registran en [erros.log](erros.log).
+- El apagado del asistente guarda la memoria antes de salir.
 
 ### Fase 4
 
-La extensibilidad quedó preparada:
+La extensibilidad ya funciona:
 
 - Carga automática de plugins locales con [src/plugins.py](src/plugins.py).
-- Estructura MCP inicial en [src/mcp/client.py](src/mcp/client.py) y [src/mcp/registry.py](src/mcp/registry.py).
-- La integración MCP real todavía no está conectada a un servidor externo.
+- Los plugins pueden declarar capacidades y el ranking las usa.
+- Existe un plugin de ejemplo en [plugins/spotify/plugin.py](plugins/spotify/plugin.py).
+- MCP funciona por stdio/JSON-RPC con [src/mcp/client.py](src/mcp/client.py), [src/mcp/loader.py](src/mcp/loader.py) y [src/mcp/registry.py](src/mcp/registry.py).
+- La carga MCP se basa en `mcp_servers.json` si existe.
 
 ### Fase 5 y 6
 
@@ -49,6 +57,17 @@ El agente ya entiende mejor la intención y la terminal mejoró visualmente:
 - Planifica órdenes compuestas como abrir varias apps.
 - Tiene una UI más clara en [src/terminal_ui.py](src/terminal_ui.py).
 - Muestra banner, proveedor activo y cantidad de tools al iniciar.
+- El prompt del modelo incluye memoria relevante y tools mejor rankeadas.
+
+### Fase 7
+
+La base está testeada con `unittest`:
+
+- Planner.
+- Executor.
+- Tools.
+- Plugins.
+- MCP local de prueba.
 
 ## Flujo principal de ejecución
 
@@ -59,9 +78,10 @@ El agente ya entiende mejor la intención y la terminal mejoró visualmente:
 5. Se carga la memoria local.
 6. `src/cli.py` muestra el banner y el estado inicial.
 7. `src/core/agent_loop.py` arranca el bucle conversacional.
-8. Si la intención es simple, el agente puede ejecutar un plan directo sin pasar por el LLM.
-9. Si el modelo pide tools, se despachan desde el registry.
-10. Cada salida relevante persiste memoria y errores si corresponde.
+8. El planner construye un plan con contexto de memoria y ranking de tools.
+9. Si la intención es simple, el executor puede ejecutar pasos directos sin pasar por el LLM.
+10. Si el modelo pide tools, se despachan desde el registry.
+11. Cada salida relevante persiste memoria y errores si corresponde.
 
 ## Estructura actual
 
@@ -71,10 +91,13 @@ El agente ya entiende mejor la intención y la terminal mejoró visualmente:
 - `src/core/agent_loop.py`: conversación, planning, tool calls, persistencia y apagado.
 - `src/core/tool_registry.py`: registro y ejecución segura de tools.
 - `src/tools.py`: tools locales de Windows, clima y memoria.
-- `src/intent.py`: clasificación simple de intención y planificación ligera.
+- `src/intent.py`: clasificación de intención y extracción de objetivos.
 - `src/terminal_ui.py`: banner, colores y mensajes visuales de consola.
 - `src/plugins.py`: carga de plugins locales.
-- `src/mcp/`: base para integración MCP.
+- `src/mcp/`: cliente, loader y registry MCP.
+- `src/planner/`: planner y executor.
+- `src/memory/`: retrieval de memoria relevante.
+- `src/tool_ranking.py`: ranking de tools.
 - `src/app_index.py`: detecta aplicaciones instaladas y mantiene `apps_index.json`.
 - `src/config.py`: configura cliente y modelo según el proveedor.
 - `src/memory_store.py`: carga, normaliza y guarda memoria local.
@@ -82,9 +105,12 @@ El agente ya entiende mejor la intención y la terminal mejoró visualmente:
 - `memory.json`: persistencia de preferencias, hechos y historial.
 - `apps_index.json`: índice de apps útiles detectadas en el sistema.
 - `erros.log`: archivo de errores para depuración.
+- `mcp_servers.json`: configuración opcional de servidores MCP locales.
+- `plugins/spotify/plugin.py`: plugin de ejemplo con capacidades `music` y `audio`.
 - `context/SUMMERIZE.md`: resumen del proyecto.
 - `README.md`: documentación de instalación y uso.
 - `requirements.txt`: dependencias Python.
+- `tests/`: batería de pruebas unitarias.
 
 ## Proveedores de modelo
 
@@ -137,17 +163,18 @@ El proyecto está pensado específicamente para Windows:
 
 ## Estado actual del proyecto
 
-La arquitectura ya está bastante modular y funcional:
+- La arquitectura ya está bastante modular y funcional:
 
 - Hay separación clara entre loop, tools, intención, UI y persistencia.
 - El agente puede resolver órdenes simples sin depender siempre del LLM.
 - Las acciones sensibles están protegidas por confirmación.
-- Existe una base para plugins locales y MCP, aunque MCP todavía no está conectado a servidores reales.
+- Existe base para plugins locales y MCP, y ya hay integración MCP funcional por servidores locales.
+- El proyecto está cubierto por tests de planner, executor, tools, plugins y MCP.
 
 ## Posibles extensiones futuras
 
 - Integración MCP real para apps que expongan tools propias.
-- Registro dinámico de herramientas de servidores externos.
+- Registro dinámico de más herramientas de servidores externos.
 - Allowlist por plugin o por tool.
 - Memoria semántica más rica.
 - Mejor empaquetado de terminal o interfaz web.

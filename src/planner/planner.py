@@ -86,6 +86,40 @@ def _resolve_target(target, apps_available):
     return normalized_target
 
 
+def _intent_capabilities(intent):
+    return {
+        "music": ["music", "audio"],
+        "ask_info": ["info", "knowledge"],
+        "chat": [],
+        "open_app": ["app", "system"],
+        "close_program": ["system"],
+        "save_preference": ["memory"],
+    }.get(intent, [])
+
+
+def _default_params_for_tool(tool):
+    schema = getattr(tool, "schema", {}) or {}
+    if not isinstance(schema, dict):
+        return {}
+
+    properties = schema.get("properties", {}) if isinstance(schema.get("properties", {}), dict) else {}
+    required = schema.get("required", []) if isinstance(schema.get("required", []), list) else []
+    params = {}
+
+    for key, definition in properties.items():
+        if isinstance(definition, dict) and "default" in definition:
+            params[key] = definition["default"]
+
+    for key in required:
+        if key not in params:
+            if key == "limit":
+                params[key] = 10
+            else:
+                params[key] = ""
+
+    return params
+
+
 @dataclass
 class Step:
     action: str
@@ -134,7 +168,14 @@ class Planner:
         apps_available = load_apps()
         running_processes = _load_running_processes()
         relevant_memory = get_relevant_memory(user_input, self.memory_store)
-        ranked_tools = rank_tools(user_input, self.registry.list_tools() if self.registry else [], history=self.memory_store.get("history", []))
+        intent = classify_intent(user_input)
+        desired_capabilities = _intent_capabilities(intent)
+        ranked_tools = rank_tools(
+            user_input,
+            self.registry.list_tools() if self.registry else [],
+            history=self.memory_store.get("history", []),
+            desired_capabilities=desired_capabilities,
+        )
 
         context = {
             "user_input": user_input,
@@ -142,17 +183,18 @@ class Planner:
             "running_processes": running_processes,
             "last_result": None,
             "relevant_memory": relevant_memory,
+            "desired_capabilities": desired_capabilities,
             "ranked_tools": [
                 {
                     "tool": item["tool"].name,
                     "score": item["score"],
                     "reasons": item["reasons"],
+                    "capabilities": item.get("capabilities", []),
                 }
                 for item in ranked_tools[:5]
             ],
         }
 
-        intent = classify_intent(user_input)
         plan = Plan(context=context, intent=intent)
 
         if relevant_memory:
@@ -164,26 +206,30 @@ class Planner:
             else:
                 plan.notes.append(f"Memoria relevante encontrada en {top_memory.get('source')}")
 
-        if intent == "chat" and self.registry:
-            best_tool, _ = select_best_tool(user_input, self.registry.list_tools(), history=self.memory_store.get("history", []))
-            if best_tool and best_tool["tool"].name in {"get_weather", "list_running_processes"}:
+        if intent in {"chat", "music", "ask_info"} and self.registry:
+            best_tool, _ = select_best_tool(
+                user_input,
+                self.registry.list_tools(),
+                history=self.memory_store.get("history", []),
+                desired_capabilities=desired_capabilities,
+                threshold=2.6,
+            )
+            if best_tool:
                 tool = best_tool["tool"]
-                params = {}
+                params = _default_params_for_tool(tool)
 
-                if tool.name == "list_running_processes":
-                    params = {"limit": 10}
-
-                plan.steps.append(
-                    Step(
-                        action=tool.name,
-                        params=params,
-                        condition=None,
-                        condition_name="ranked_tool",
-                        description=f"Tool sugerida por ranking: {tool.name}",
+                if best_tool["score"] >= 2.6 and getattr(tool, "risk", "safe") in {"safe", "low"}:
+                    plan.steps.append(
+                        Step(
+                            action=tool.name,
+                            params=params,
+                            condition=None,
+                            condition_name="ranked_tool",
+                            description=f"Tool sugerida por ranking: {tool.name}",
+                        )
                     )
-                )
-                plan.notes.append(f"Tool sugerida automáticamente: {tool.name}")
-                return plan
+                    plan.notes.append(f"Tool sugerida automáticamente: {tool.name}")
+                    return plan
 
         if intent not in {"open_app", "close_program"}:
             return plan
