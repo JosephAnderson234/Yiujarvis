@@ -2,3 +2,4 @@
 __pycache__/
 .env
 apps_index.json
+memory.json

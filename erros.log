@@ -6,3 +6,17 @@ Traceback (most recent call last):
   File "<string>", line 1, in <lambda>
   File "<string>", line 1, in <genexpr>
 RuntimeError: fallo de prueba
+2026-04-28 13:12:16,068 ERROR yiujarvis: No se pudo consultar el modelo
+Traceback (most recent call last):
+  File "C:\Users\cosea\Documents\Github\portafolio\Yiujarvis\src\core\agent_loop.py", line 326, in Yiujarvis
+    response = client.chat.completions.create(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\cosea\Documents\Github\portafolio\Yiujarvis\.venv\Lib\site-packages\groq\resources\chat\completions.py", line 461, in create
+    return self._post(
+           ^^^^^^^^^^^
+  File "C:\Users\cosea\Documents\Github\portafolio\Yiujarvis\.venv\Lib\site-packages\groq\_base_client.py", line 1284, in post
+    return cast(ResponseT, self.request(cast_to, opts, stream=stream, stream_cls=stream_cls))
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\cosea\Documents\Github\portafolio\Yiujarvis\.venv\Lib\site-packages\groq\_base_client.py", line 1071, in request
+    raise self._make_status_error_from_response(err.response) from None
+groq.BadRequestError: Error code: 400 - {'error': {'message': 'tool call validation failed: parameters for tool close_program did not match schema: errors: [`/process_name`: expected string, but got object, `/dry_run`: expected boolean, but got object]', 'type': 'invalid_request_error', 'code': 'tool_use_failed', 'failed_generation': '[\n  {\n    "name": "close_program",\n    "parameters": {\n      "dry_run": {\n        "default": false,\n        "type": "boolean"\n      },\n      "process_name": {\n        "type": "string"\n      }\n    }\n  }\n]'}}

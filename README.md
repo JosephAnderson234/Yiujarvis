@@ -99,6 +99,10 @@ python .\main.py --model groq
 - Elegir tools por ranking cuando la intención es clara.
 - Cargar plugins locales y tools MCP registradas.
 
+## MCP
+
+Si quieres integrar tools externas mediante MCP, revisa [docs/MCP_AVANZADO.md](docs/MCP_AVANZADO.md). Ahí tienes la estructura de `mcp_servers.json`, el ciclo de vida del cliente MCP y un ejemplo de servidor local.
+
 ## Archivos generados
 
 Estos archivos se crean o actualizan automáticamente durante el uso:
