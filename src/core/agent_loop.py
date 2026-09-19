@@ -244,7 +244,8 @@ def Yiujarvis(initial_memory, provider="githubmodel"):
                 break
 
             recent_messages.append({"role": "user", "content": user_input})
-            append_history(initial_memory, "user", user_input)
+            initial_memory = append_history(initial_memory, "user", user_input)
+            planner.memory_store = initial_memory
 
             plan = planner.build_plan(user_input)
 
@@ -269,14 +270,14 @@ def Yiujarvis(initial_memory, provider="githubmodel"):
                 if results:
                     print_assistant(summary)
                     recent_messages.append({"role": "assistant", "content": summary})
-                    append_history(initial_memory, "assistant", summary)
+                    initial_memory = append_history(initial_memory, "assistant", summary)
                     persist_state(initial_memory)
                     messages.append({"role": "assistant", "content": summary})
                 else:
                     fallback = "No había acciones que ejecutar."
                     print_notice(fallback)
                     recent_messages.append({"role": "assistant", "content": fallback})
-                    append_history(initial_memory, "assistant", fallback)
+                    initial_memory = append_history(initial_memory, "assistant", fallback)
                     persist_state(initial_memory)
                     messages.append({"role": "assistant", "content": fallback})
                 continue
@@ -336,7 +337,7 @@ def Yiujarvis(initial_memory, provider="githubmodel"):
                     print(final_message)
 
                 recent_messages.append({"role": "assistant", "content": final_message})
-                append_history(initial_memory, "assistant", final_message)
+                initial_memory = append_history(initial_memory, "assistant", final_message)
                 persist_state(initial_memory)
                 messages.append({"role": "assistant", "content": final_message})
             else:
@@ -344,13 +345,13 @@ def Yiujarvis(initial_memory, provider="githubmodel"):
                     print("\n🤖 Yiujarvis: ", end="")
                     streamed_message = stream_groq_response(client, model_name, messages)
                     recent_messages.append({"role": "assistant", "content": streamed_message})
-                    append_history(initial_memory, "assistant", streamed_message)
+                    initial_memory = append_history(initial_memory, "assistant", streamed_message)
                     persist_state(initial_memory)
                     messages.append({"role": "assistant", "content": streamed_message})
                 else:
                     print_assistant(message.content)
                     recent_messages.append({"role": "assistant", "content": message.content})
-                    append_history(initial_memory, "assistant", message.content)
+                    initial_memory = append_history(initial_memory, "assistant", message.content)
                     persist_state(initial_memory)
                     messages.append({"role": "assistant", "content": message.content})
     finally:
