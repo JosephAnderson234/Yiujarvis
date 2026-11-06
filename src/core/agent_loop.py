@@ -1,5 +1,6 @@
 import json
 import logging
+from itertools import chain
 from datetime import datetime
 
 from src.config import get_model_config
@@ -15,6 +16,7 @@ from src.mcp.client import MCPClient
 from src.mcp.loader import load_mcp_tools
 from src.mcp.registry import MCPRegistry
 from src.terminal_ui import (
+    Spinner,
     print_assistant,
     print_assistant_prefix,
     print_notice,
@@ -236,13 +238,17 @@ def stream_completion(client, model_name, messages, tools=None, tool_choice="aut
         request["tools"] = tools
         request["tool_choice"] = tool_choice
 
-    stream = client.chat.completions.create(**request)
+    with Spinner("Esperando respuesta"):
+        stream = iter(client.chat.completions.create(**request))
+        first_chunk = next(stream, None)
 
     content_parts = []
     tool_calls = {}
     started = False
 
-    for chunk in stream:
+    for chunk in chain((first_chunk,), stream):
+        if chunk is None:
+            continue
         if not chunk.choices:
             continue
 
@@ -309,7 +315,11 @@ def execute_tool_call(registry, tool_call):
         return f"Los argumentos de {function_name} deben ser un objeto JSON"
 
     print_tool_call(function_name, arguments)
-    return _format_tool_result(registry.execute(function_name, **arguments))
+    tool = registry.get(function_name)
+    if tool is not None and tool.risk.lower() in {"dangerous", "sensitive"}:
+        return _format_tool_result(registry.execute(function_name, **arguments))
+    with Spinner(f"Ejecutando {function_name}"):
+        return _format_tool_result(registry.execute(function_name, **arguments))
 
 
 def run_agent_turn(client, model_name, messages, registry):
@@ -373,22 +383,23 @@ def compact_conversation(client, model_name, messages, session_summary):
     transcript = "\n".join(_render_for_summary(message) for message in dropped)
 
     try:
-        response = client.chat.completions.create(
-            model=model_name,
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "Resume en español, en máximo 10 viñetas, los datos, decisiones, resultados de "
-                        "acciones y tareas pendientes de esta conversación. Integra el resumen previo."
-                    ),
-                },
-                {
-                    "role": "user",
-                    "content": f"Resumen previo:\n{session_summary or '- ninguno'}\n\nConversación:\n{transcript}",
-                },
-            ],
-        )
+        with Spinner("Resumiendo conversación"):
+            response = client.chat.completions.create(
+                model=model_name,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "Resume en español, en máximo 10 viñetas, los datos, decisiones, resultados de "
+                            "acciones y tareas pendientes de esta conversación. Integra el resumen previo."
+                        ),
+                    },
+                    {
+                        "role": "user",
+                        "content": f"Resumen previo:\n{session_summary or '- ninguno'}\n\nConversación:\n{transcript}",
+                    },
+                ],
+            )
         session_summary = response.choices[0].message.content or session_summary
     except Exception:
         log_exception("No se pudo resumir la conversación")
@@ -398,7 +409,8 @@ def compact_conversation(client, model_name, messages, session_summary):
 
 
 def run_direct_command(planner, executor, user_input):
-    plan = planner.build_plan(user_input)
+    with Spinner("Preparando plan"):
+        plan = planner.build_plan(user_input)
 
     if plan.intent not in DIRECT_INTENTS:
         return None
@@ -469,7 +481,8 @@ def Yiujarvis(memory, provider="codex", registry=None):
                     memory_session.save()
                     continue
 
-            hints = planner.build_plan(user_input).context
+            with Spinner("Analizando solicitud"):
+                hints = planner.build_plan(user_input).context
             session_summary = compact_conversation(client, model_name, messages, session_summary)
             messages[0]["content"] = build_system_prompt(
                 memory_session.data,

@@ -51,11 +51,21 @@ def parse_args():
         action="store_true",
         help="Ejecuta Yiujarvis en la bandeja de Windows",
     )
+    parser.add_argument(
+        "--no-animations",
+        action="store_true",
+        help="Desactiva las animaciones de la terminal",
+    )
     return parser.parse_args()
 
 
 if __name__ == "__main__":
     args = parse_args()
+
+    if args.no_animations:
+        from src.terminal_ui import set_animations_enabled
+
+        set_animations_enabled(False)
 
     if args.admin and relaunch_as_admin_if_needed():
         sys.exit(0)

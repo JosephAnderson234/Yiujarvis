@@ -96,6 +96,11 @@ python .\main.py --model codex
 python .\main.py --model claude
 ```
 
+La terminal muestra animaciones breves al iniciar, planear, consultar al modelo y
+ejecutar herramientas. Se desactivan automáticamente al redirigir la salida.
+También puedes desactivarlas con `python .\main.py --no-animations` o con
+`YIUJARVIS_NO_ANIMATION=1` en el entorno.
+
 Los modos CLI usan las credenciales de la suscripción que ya administra cada
 programa. Yiujarvis envía el historial necesario a la CLI, recibe una respuesta
 estructurada y ejecuta las herramientas por su propio registro de permisos.

@@ -1,9 +1,73 @@
 import os
+import sys
+import threading
+import time
 
 from colorama import Fore, Style, init
 
 
 init(autoreset=True)
+
+
+ANIMATIONS_ENABLED = True
+SPINNER_FRAMES = ("⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏")
+
+
+def set_animations_enabled(enabled):
+    global ANIMATIONS_ENABLED
+    ANIMATIONS_ENABLED = bool(enabled)
+
+
+def animations_enabled():
+    return (
+        ANIMATIONS_ENABLED
+        and os.getenv("YIUJARVIS_NO_ANIMATION", "").lower() not in {"1", "true", "yes"}
+        and hasattr(sys.stdout, "isatty")
+        and sys.stdout.isatty()
+    )
+
+
+class Spinner:
+    """Small terminal-only animation for blocking work."""
+
+    def __init__(self, label):
+        self.label = label
+        self._stop = threading.Event()
+        self._thread = None
+        self._active = False
+
+    def __enter__(self):
+        self.start()
+        return self
+
+    def __exit__(self, _type, _value, _traceback):
+        self.stop()
+
+    def start(self):
+        if not animations_enabled() or self._active:
+            return
+        self._active = True
+
+        def animate():
+            index = 0
+            while not self._stop.is_set():
+                frame = SPINNER_FRAMES[index % len(SPINNER_FRAMES)]
+                sys.stdout.write(f"\r{Fore.CYAN}{frame} {self.label}{Style.RESET_ALL}")
+                sys.stdout.flush()
+                index += 1
+                self._stop.wait(0.09)
+
+        self._thread = threading.Thread(target=animate, daemon=True, name="yiujarvis-spinner")
+        self._thread.start()
+
+    def stop(self):
+        if not self._active:
+            return
+        self._stop.set()
+        self._thread.join(timeout=1)
+        sys.stdout.write("\r" + " " * (len(self.label) + 8) + "\r")
+        sys.stdout.flush()
+        self._active = False
 
 
 def clear_screen():
@@ -13,7 +77,15 @@ def clear_screen():
 def show_banner():
     clear_screen()
     print(Fore.CYAN + Style.BRIGHT + "═" * 62)
-    print(Fore.CYAN + Style.BRIGHT + "   Yiujarvis")
+    if animations_enabled():
+        title = "   Yiujarvis"
+        for character in title:
+            sys.stdout.write(Fore.CYAN + Style.BRIGHT + character)
+            sys.stdout.flush()
+            time.sleep(0.025)
+        print()
+    else:
+        print(Fore.CYAN + Style.BRIGHT + "   Yiujarvis")
     print(Fore.WHITE + "   Asistente local para Windows")
     print(Fore.CYAN + Style.BRIGHT + "═" * 62)
 
