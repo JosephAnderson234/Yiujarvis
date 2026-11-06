@@ -5,7 +5,7 @@ from src.memory_store import MemorySession, load_memory
 from src.terminal_ui import show_banner, show_startup_status
 
 
-def run(provider="githubmodel"):
+def run(provider="codex"):
     ensure_apps_index()
     memory_session = MemorySession(load_memory())
     registry = build_tool_registry(memory_session)

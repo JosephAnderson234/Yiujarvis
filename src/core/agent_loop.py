@@ -279,7 +279,7 @@ def stream_completion(client, model_name, messages, tools=None, tool_choice="aut
 
     if not content_parts and not tool_calls:
         raise RuntimeError(
-            f"El proveedor devolvió una respuesta vacía para {model_name}; revisa el endpoint y el token."
+            f"El proveedor devolvió una respuesta vacía para {model_name}; revisa su sesión o configuración."
         )
 
     return "".join(content_parts), [tool_calls[index] for index in sorted(tool_calls)]
@@ -429,7 +429,7 @@ def shutdown_session(memory_session, message="Apagándome y guardando memoria.")
     print_warning(message)
 
 
-def Yiujarvis(memory, provider="githubmodel", registry=None):
+def Yiujarvis(memory, provider="codex", registry=None):
     memory_session = memory if isinstance(memory, MemorySession) else MemorySession(memory)
     model_config = get_model_config(provider)
     client = model_config["client"]

@@ -401,7 +401,7 @@ class BackgroundWindow:
         self.root.mainloop()
 
 
-def run_background(provider="githubmodel"):
+def run_background(provider="codex"):
     if sys.platform != "win32":
         raise RuntimeError("El modo en segundo plano requiere Windows")
     BackgroundWindow(provider).run()

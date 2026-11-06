@@ -37,8 +37,8 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--model",
-        choices=["githubmodel", "groq"],
-        default="githubmodel",
+        choices=["codex", "claude", "githubmodel", "groq"],
+        default="codex",
         help="Proveedor de IA a usar",
     )
     parser.add_argument(

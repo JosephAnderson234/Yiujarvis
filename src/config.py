@@ -15,6 +15,15 @@ GROQ_MODEL_NAME = "openai/gpt-oss-120b"
 def get_model_config(provider):
     provider_name = provider.lower().strip()
 
+    if provider_name in {"codex", "claude"}:
+        from src.cli_model import CLIAgentClient
+
+        return {
+            "provider": provider_name,
+            "model_name": f"{provider_name}-cli",
+            "client": CLIAgentClient(provider_name),
+        }
+
     if provider_name == "groq":
         if not GROQ_TOKEN:
             raise RuntimeError(
@@ -27,6 +36,9 @@ def get_model_config(provider):
             "model_name": GROQ_MODEL_NAME,
             "client": Groq(api_key=GROQ_TOKEN),
         }
+
+    if provider_name != "githubmodel":
+        raise ValueError(f"Proveedor desconocido: {provider}")
 
     if not TOKEN:
         raise RuntimeError(

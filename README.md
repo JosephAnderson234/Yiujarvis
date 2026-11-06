@@ -13,7 +13,9 @@ Yiujarvis es un asistente personal por consola para Windows. Conversa con el usu
 - Ranking de tools por keywords, capacidades e ისტორial.
 - Plugins locales con capacidades, incluyendo un plugin de ejemplo para Spotify.
 - Base MCP real por stdio/JSON-RPC para tools externas locales.
-- Soporte para dos proveedores de IA:
+- Soporte para dos agentes CLI con sesión de suscripción y dos proveedores API:
+  - `codex` (predeterminado)
+  - `claude`
   - `githubmodel`
   - `groq`
 - Indexado automático de aplicaciones útiles instaladas en el sistema.
@@ -24,8 +26,9 @@ Yiujarvis es un asistente personal por consola para Windows. Conversa con el usu
 
 - Windows
 - Python 3.11 o superior
-- Una clave de GitHub Models en `GITHUB_TOKEN`
-- Opcional: una clave de Groq en `GROQ_API_KEY`
+- Para `codex` o `claude`: la CLI correspondiente instalada y con sesión iniciada.
+- Para `githubmodel`: una clave de GitHub Models en `GITHUB_TOKEN`.
+- Para `groq`: una clave de Groq en `GROQ_API_KEY`.
 
 ## Pruebas
 
@@ -50,7 +53,7 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-3. Crea un archivo `.env` en la raíz del proyecto con tus credenciales.
+3. Si eliges un proveedor API, crea un archivo `.env` en la raíz con tus credenciales.
 
 ```env
 GITHUB_TOKEN=tu_token_de_github_models
@@ -78,16 +81,28 @@ Ejecuta el asistente desde la raíz del proyecto.
 python .\main.py
 ```
 
-Por defecto usa `githubmodel`.
+Por defecto usa `codex` con la sesión de su CLI. Inicia sesión previamente en la
+CLI que elijas (`codex login` o `claude auth login`). Yiujarvis no necesita una
+API key para esos dos modos.
 
-### Elegir proveedor de IA
+### Elegir proveedor de IA o agente CLI
 
 Usa el parámetro `--model` para cambiar de backend.
 
 ```powershell
 python .\main.py --model githubmodel
 python .\main.py --model groq
+python .\main.py --model codex
+python .\main.py --model claude
 ```
+
+Los modos CLI usan las credenciales de la suscripción que ya administra cada
+programa. Yiujarvis envía el historial necesario a la CLI, recibe una respuesta
+estructurada y ejecuta las herramientas por su propio registro de permisos.
+Claude se invoca sin herramientas integradas; Codex trabaja en un directorio
+temporal con sandbox de solo lectura. Las respuestas CLI aparecen al terminar
+cada invocación, sin streaming de tokens. Cada invocación puede tardar más que
+un proveedor API y vence tras 180 segundos.
 
 ### Agente en segundo plano (Windows)
 
