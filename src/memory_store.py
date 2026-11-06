@@ -2,8 +2,10 @@ import copy
 import json
 from pathlib import Path
 
+from src.paths import PROJECT_ROOT
 
-MEMORY_FILE = Path("memory.json")
+
+MEMORY_FILE = PROJECT_ROOT / "memory.json"
 DEFAULT_MEMORY = {
     "preferences": {},
     "facts": [],
@@ -99,3 +101,23 @@ def build_memory_context(memory, recent_messages=None):
     }
 
     return json.dumps(context, ensure_ascii=False, indent=2)
+
+class MemorySession:
+    """Dueño único de la memoria en vivo: el loop y las tools escriben aquí, nunca en copias sueltas."""
+
+    def __init__(self, memory=None):
+        self.data = normalize_memory(memory)
+
+    def set_preference(self, key, value):
+        self.data = set_preference(self.data, key, value)
+        self.save()
+
+    def add_fact(self, fact):
+        self.data = add_fact(self.data, fact)
+        self.save()
+
+    def append_history(self, role, content):
+        self.data = append_history(self.data, role, content)
+
+    def save(self):
+        save_memory(self.data)

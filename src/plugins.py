@@ -2,6 +2,7 @@ import importlib.util
 from pathlib import Path
 
 from src.error_logger import log_exception
+from src.paths import PROJECT_ROOT
 
 
 def _load_module_from_path(module_path):
@@ -14,7 +15,7 @@ def _load_module_from_path(module_path):
     return module
 
 
-def load_plugins(registry, plugins_root="plugins"):
+def load_plugins(registry, plugins_root=PROJECT_ROOT / "plugins"):
     root_path = Path(plugins_root)
 
     if not root_path.exists():

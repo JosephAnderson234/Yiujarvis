@@ -1,8 +1,6 @@
 import os
 
 from dotenv import load_dotenv
-from groq import Groq
-from openai import OpenAI
 
 
 load_dotenv()
@@ -22,6 +20,8 @@ def get_model_config(provider):
             raise RuntimeError(
                 "Falta GROQ_API_KEY en el entorno. Define la variable en tu archivo .env."
             )
+        from groq import Groq
+
         return {
             "provider": "groq",
             "model_name": GROQ_MODEL_NAME,
@@ -32,6 +32,8 @@ def get_model_config(provider):
         raise RuntimeError(
             "Falta GITHUB_TOKEN en el entorno. Define la variable en tu archivo .env."
         )
+    from openai import OpenAI
+
     return {
         "provider": "githubmodel",
         "model_name": MODEL_NAME,

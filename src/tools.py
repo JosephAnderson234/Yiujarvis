@@ -5,6 +5,8 @@ import os
 import shutil
 import subprocess
 
+import requests
+
 from src.app_index import find_best_match, load_apps
 from src.error_logger import ensure_error_logging, log_exception
 from src.memory_store import load_memory, save_memory, set_preference
@@ -87,8 +89,93 @@ def _open_windows_target(target):
     launch_silently(["cmd", "/c", "start", "", target])
 
 
-def get_weather():
-    return "Hace 22°C y está soleado"
+WEATHER_CODES = {
+    0: "despejado",
+    1: "mayormente despejado",
+    2: "parcialmente nublado",
+    3: "nublado",
+    45: "niebla",
+    48: "niebla con escarcha",
+    51: "llovizna ligera",
+    53: "llovizna",
+    55: "llovizna intensa",
+    61: "lluvia ligera",
+    63: "lluvia",
+    65: "lluvia intensa",
+    71: "nieve ligera",
+    73: "nieve",
+    75: "nieve intensa",
+    80: "chubascos ligeros",
+    81: "chubascos",
+    82: "chubascos violentos",
+    95: "tormenta",
+    96: "tormenta con granizo",
+    99: "tormenta fuerte con granizo",
+}
+
+
+def _geocode_city(city):
+    response = requests.get(
+        "https://geocoding-api.open-meteo.com/v1/search",
+        params={"name": city, "count": 1, "language": "es"},
+        timeout=8,
+    )
+    response.raise_for_status()
+    results = response.json().get("results") or []
+    if not results:
+        return None
+
+    place = results[0]
+    label = ", ".join(part for part in (place.get("name"), place.get("country")) if part)
+    return place["latitude"], place["longitude"], label
+
+
+def _locate_by_ip():
+    response = requests.get("https://ipapi.co/json/", timeout=8)
+    response.raise_for_status()
+    data = response.json()
+    label = ", ".join(part for part in (data.get("city"), data.get("country_name")) if part)
+    return data["latitude"], data["longitude"], label or "tu ubicación"
+
+
+def get_weather(city=""):
+    try:
+        location = _geocode_city(city) if city.strip() else _locate_by_ip()
+        if location is None:
+            return f"No encontré la ciudad {city}"
+
+        latitude, longitude, label = location
+        response = requests.get(
+            "https://api.open-meteo.com/v1/forecast",
+            params={
+                "latitude": latitude,
+                "longitude": longitude,
+                "current": "temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m",
+                "daily": "temperature_2m_max,temperature_2m_min,precipitation_probability_max",
+                "forecast_days": 1,
+                "timezone": "auto",
+            },
+            timeout=8,
+        )
+        response.raise_for_status()
+        data = response.json()
+    except Exception as exc:
+        log_exception(f"Error consultando el clima de {city or 'la ubicación actual'}")
+        return f"No pude consultar el clima: {exc}"
+
+    current = data.get("current", {})
+    daily = data.get("daily", {})
+    condition = WEATHER_CODES.get(current.get("weather_code"), "condición desconocida")
+
+    def _first(values):
+        return values[0] if values else "?"
+
+    return (
+        f"{label}: {current.get('temperature_2m')}°C (sensación {current.get('apparent_temperature')}°C), "
+        f"{condition}, humedad {current.get('relative_humidity_2m')}%, viento {current.get('wind_speed_10m')} km/h. "
+        f"Hoy: mín {_first(daily.get('temperature_2m_min', []))}°C / máx {_first(daily.get('temperature_2m_max', []))}°C, "
+        f"probabilidad de lluvia {_first(daily.get('precipitation_probability_max', []))}%."
+    )
 
 
 def _normalize_process_name(process_name):

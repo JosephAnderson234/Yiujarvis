@@ -89,6 +89,29 @@ python .\main.py --model githubmodel
 python .\main.py --model groq
 ```
 
+### Agente en segundo plano (Windows)
+
+Instala las dependencias actualizadas y ejecuta:
+
+```powershell
+pip install -r requirements.txt
+python .\main.py --background
+```
+
+Si prefieres ocultar también la consola, usa `pythonw .\main.py --background`.
+El icono de la bandeja permite abrir, pausar y salir. `Ctrl+Alt+J` abre la ventana.
+Escribe una tarea y pulsa **Enviar tarea ahora**, o indica una fecha local en formato
+`AAAA-MM-DD HH:MM` y pulsa **Programar recordatorio**. Las tareas sobreviven a reinicios
+en `tasks.sqlite3`. El botón **Inicio con Windows** activa o desactiva el arranque
+automático para tu usuario. Las herramientas sensibles piden aprobación en una ventana;
+si no se responde en 60 segundos, se deniegan.
+Si el programa se cierra durante una tarea, esta queda como `interrupted` y puede
+reintentarse desde la ventana; así no se repite una acción sin que la revises.
+También puedes crear reglas de aviso para ventanas: indica una parte del título y
+el mensaje que quieres recibir. El título se compara localmente cada segundo;
+Yiujarvis no lo guarda ni lo envía al modelo. Puedes eliminar cada regla desde la
+ventana o pausar todos los avisos.
+
 ## Qué puede hacer
 
 - Abrir apps como navegador, terminal, editor, mensajería y utilidades del sistema.
@@ -110,6 +133,7 @@ Estos archivos se crean o actualizan automáticamente durante el uso:
 - `memory.json`: memoria local del asistente.
 - `apps_index.json`: índice de apps útiles instaladas.
 - `erros.log`: traza persistente de errores.
+- `tasks.sqlite3`: tareas y recordatorios del modo en segundo plano.
 
 ## Estructura del proyecto
 

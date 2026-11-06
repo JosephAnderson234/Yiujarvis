@@ -165,10 +165,12 @@ class Planner:
         self.memory_store = memory_store or {}
 
     def build_plan(self, user_input):
-        apps_available = load_apps()
-        running_processes = _load_running_processes()
         relevant_memory = get_relevant_memory(user_input, self.memory_store)
         intent = classify_intent(user_input)
+        needs_system_state = intent in {"open_app", "close_program"}
+        # Solo abrir/cerrar necesita el índice de apps y PowerShell; el resto no debe pagar esa latencia.
+        apps_available = load_apps() if needs_system_state else {}
+        running_processes = _load_running_processes() if needs_system_state else []
         desired_capabilities = _intent_capabilities(intent)
         ranked_tools = rank_tools(
             user_input,

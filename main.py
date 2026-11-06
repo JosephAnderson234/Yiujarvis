@@ -18,7 +18,6 @@ def relaunch_as_admin_if_needed():
         return False
 
     script_path = os.path.abspath(__file__)
-    arguments = [sys.executable, script_path] + sys.argv[1:]
     result = ctypes.windll.shell32.ShellExecuteW(
         None,
         "runas",
@@ -42,12 +41,28 @@ def parse_args():
         default="githubmodel",
         help="Proveedor de IA a usar",
     )
+    parser.add_argument(
+        "--admin",
+        action="store_true",
+        help="Reinicia Yiujarvis como administrador (solo si una tool lo necesita)",
+    )
+    parser.add_argument(
+        "--background",
+        action="store_true",
+        help="Ejecuta Yiujarvis en la bandeja de Windows",
+    )
     return parser.parse_args()
 
 
 if __name__ == "__main__":
-    if relaunch_as_admin_if_needed():
+    args = parse_args()
+
+    if args.admin and relaunch_as_admin_if_needed():
         sys.exit(0)
 
-    args = parse_args()
-    run(provider=args.model)
+    if args.background:
+        from src.background import run_background
+
+        run_background(provider=args.model)
+    else:
+        run(provider=args.model)

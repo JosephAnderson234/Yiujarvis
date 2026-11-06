@@ -27,6 +27,7 @@ class ToolRegistry:
     def __init__(self, confirm_callback=None):
         self._tools = {}
         self._confirm_callback = confirm_callback
+        self.mcp_client = None
 
     def register(self, tool):
         self._tools[tool.name] = tool
@@ -92,7 +93,7 @@ class ToolRegistry:
 
     def _confirm(self, tool, kwargs):
         if self._confirm_callback is None:
-            return True
+            return False
 
         return bool(self._confirm_callback(tool, kwargs))
 

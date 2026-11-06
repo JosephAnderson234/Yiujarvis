@@ -4,6 +4,7 @@ from pathlib import Path
 from src.error_logger import log_exception
 from src.mcp.client import MCPClient, create_tool_from_mcp_definition
 from src.mcp.registry import MCPRegistry
+from src.paths import PROJECT_ROOT
 
 
 def _load_server_configs(config_path):
@@ -26,7 +27,7 @@ def _load_server_configs(config_path):
     return {}
 
 
-def load_mcp_tools(registry, client=None, mcp_registry=None, config_path="mcp_servers.json"):
+def load_mcp_tools(registry, client=None, mcp_registry=None, config_path=PROJECT_ROOT / "mcp_servers.json"):
     client = client or MCPClient()
     mcp_registry = mcp_registry or MCPRegistry()
     server_configs = _load_server_configs(config_path)

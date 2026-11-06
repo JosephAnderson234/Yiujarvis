@@ -3,8 +3,10 @@ import json
 import os
 from pathlib import Path
 
+from src.paths import PROJECT_ROOT
 
-APP_INDEX_FILE = Path("apps_index.json")
+
+APP_INDEX_FILE = PROJECT_ROOT / "apps_index.json"
 APP_INDEX_VERSION = 2
 
 

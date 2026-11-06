@@ -31,6 +31,15 @@ def print_assistant(text):
     print(Fore.MAGENTA + Style.BRIGHT + "🤖 Yiujarvis:" + Style.RESET_ALL, text)
 
 
+def print_assistant_prefix():
+    print(Fore.MAGENTA + Style.BRIGHT + "🤖 Yiujarvis:" + Style.RESET_ALL, end=" ", flush=True)
+
+
+def print_tool_call(name, arguments):
+    rendered = ", ".join(f"{key}={value!r}" for key, value in arguments.items())
+    print(Fore.CYAN + Style.DIM + f"  ⚙ {name}({rendered})" + Style.RESET_ALL)
+
+
 def print_notice(text):
     print(Fore.BLUE + Style.BRIGHT + "ℹ" + Style.RESET_ALL, text)
 

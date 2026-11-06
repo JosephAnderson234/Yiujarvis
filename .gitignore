@@ -4,3 +4,4 @@ __pycache__/
 apps_index.json
 memory.json
 erros.log
+tasks.sqlite3*

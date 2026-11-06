@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 from src.memory_store import (
     DEFAULT_MEMORY,
+    MemorySession,
     add_fact,
     append_history,
     build_memory_context,
@@ -92,6 +93,23 @@ class LoadSaveMemoryTests(unittest.TestCase):
                 loaded = load_memory()
 
         self.assertEqual(loaded["preferences"]["nombre"], "Jose")
+
+
+class MemorySessionTests(unittest.TestCase):
+    def test_preference_survives_later_history_saves(self):
+        # Regresión: la tool guardaba en disco y el loop sobrescribía con su copia vieja.
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            memory_path = Path(tmp_dir) / "memory.json"
+            with patch("src.memory_store.MEMORY_FILE", memory_path):
+                session = MemorySession(copy.deepcopy(DEFAULT_MEMORY))
+                session.append_history("user", "me llamo Jose")
+                session.set_preference("nombre", "Jose")
+                session.append_history("assistant", "Anotado")
+                session.save()
+                loaded = load_memory()
+
+        self.assertEqual(loaded["preferences"]["nombre"], "Jose")
+        self.assertEqual(len(loaded["history"]), 2)
 
 
 if __name__ == "__main__":

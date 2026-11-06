@@ -1,8 +1,10 @@
 import logging
 from pathlib import Path
 
+from src.paths import PROJECT_ROOT
 
-ERROR_LOG_FILE = Path("erros.log")
+
+ERROR_LOG_FILE = PROJECT_ROOT / "erros.log"
 _CONFIGURED = False
 
 
